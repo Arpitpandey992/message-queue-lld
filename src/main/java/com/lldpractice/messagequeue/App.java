@@ -3,6 +3,11 @@ package com.lldpractice.messagequeue;
 import com.lldpractice.messagequeue.consumer.ConsumerProperties;
 import com.lldpractice.messagequeue.message.Message;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
@@ -34,11 +39,6 @@ public class App {
         });
 
         CompletableFuture.runAsync(() -> {
-            try {
-                Thread.sleep(20 * 1000);
-            } catch (Exception e) {
-                System.err.println(e.toString());
-            }
             pollFromConsumer(consumer2, 5);
         });
         Scanner scanner = new Scanner(System.in);
@@ -56,23 +56,47 @@ public class App {
     }
 
     public static void pollFromConsumer(Consumer consumer, int delayInSeconds) {
-        while (true) {
-            try {
-                List<Message> messages = consumer.pollMessages();
-                // consuming messages
-                for (Message message : messages) {
-                    System.out.printf("Consumer: %s got: %s\n", consumer.getName(), message.getMessage());
-                }
+        String outputDirectory = "logs";
+        File directory = new File(outputDirectory);
+        if (!directory.exists())
+            directory.mkdirs();
+        String outputFilePath = Paths.get(outputDirectory, consumer.getName() + ".log").toString();
+        File logFile = new File(outputFilePath);
 
-                // sending acknowledgement
-                if (!messages.isEmpty()) {
-                    consumer.acknowledgeMessages(messages.size());
-                    System.out.printf("Consumer: %s acknowledged %d messages\n", consumer.getName(), messages.size());
-                }
-                Thread.sleep(delayInSeconds * 1000);
-            } catch (Exception e) {
-                System.err.println(e.toString());
+        if (logFile.exists()) {
+            if (!logFile.delete()) {
+                System.err.println("Failed to delete the log file: " + outputFilePath);
+                return;
             }
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath, true))) {
+            while (true) {
+                try {
+                    List<Message> messages = consumer.pollMessages();
+                    // consuming messages
+                    if (!messages.isEmpty()) {
+                        writer.write("------------------------------------------\n");
+                        for (Message message : messages) {
+                            writer.write(String.format("Consumer: %s got: %s\n",
+                                    consumer.getName(),
+                                    message.getMessage()));
+                        }
+
+                        // sending acknowledgement
+                        consumer.acknowledgeMessages(messages.size());
+                        writer.write(String.format(
+                                "------------------------------------------\nConsumer: %s acknowledged %d messages\n",
+                                consumer.getName(),
+                                messages.size()));
+                    }
+                    writer.flush();
+                    Thread.sleep(delayInSeconds * 1000);
+                } catch (Exception e) {
+                    System.err.println(e.toString());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
