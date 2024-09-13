@@ -1,10 +1,10 @@
 package com.lldpractice.messagequeue.message;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-@Data
-@Builder
+@Getter
+@AllArgsConstructor
 public class Message {
     private String producerId, message;
 }

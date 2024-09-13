@@ -32,8 +32,10 @@ public class InMemoryMessageHandler implements MessageHandler {
     public List<Message> handlePollRequest(ConsumerProperties consumerProperties) {
         readLock.lock();
         try {
-            ConsumerOffsetManager offsetManager = consumerOffsetMap.getOrDefault(consumerProperties.getId(),
-                    new ConsumerOffsetManager(consumerProperties, 0));
+            if (!consumerOffsetMap.containsKey(consumerProperties.getId())) {
+                consumerOffsetMap.put(consumerProperties.getId(), new ConsumerOffsetManager(consumerProperties, 0));
+            }
+            ConsumerOffsetManager offsetManager = consumerOffsetMap.get(consumerProperties.getId());
             return topicManager.getAllMessagesFrom(offsetManager.getConsumerProperties().getTopicName(),
                     offsetManager.getOffset());
         } finally {
@@ -46,7 +48,7 @@ public class InMemoryMessageHandler implements MessageHandler {
         writeLock.lock();
         try {
             if (!this.consumerOffsetMap.containsKey(consumerProperties.getId())) {
-                System.out.printf("Invalid acknowledge request from consumer: %s", consumerProperties.getName());
+                System.out.printf("Invalid acknowledge request from consumer: %s\n", consumerProperties.getName());
                 return;
             }
             ConsumerOffsetManager offsetManager = this.consumerOffsetMap.get(consumerProperties.getId());

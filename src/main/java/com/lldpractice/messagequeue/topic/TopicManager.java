@@ -1,13 +1,14 @@
 package com.lldpractice.messagequeue.topic;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.lldpractice.messagequeue.message.Message;
 
 public class TopicManager {
-    Map<String, Topic> topics;
+    Map<String, Topic> topics = new HashMap<>();
 
     public void appendToTopic(String topicName, Message message) {
         if (!topics.containsKey(topicName)) {
